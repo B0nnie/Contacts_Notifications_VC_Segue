@@ -1,74 +1,85 @@
 //
-//  Contacts.swift
+//  Contact.swift
 //  Contacts
 //
-//  Created by Ebony Nyenya on 7/18/16.
+//  Created by Ebony Nyenya on 8/17/16.
 //  Copyright © 2016 Ebony Nyenya. All rights reserved.
 //
 
-import Foundation
+import UIKit
+import CoreData
 
-enum Gender: Int {
+@objc enum Gender: Int16 {
     case Female //0
     case Male //1
 }
 
-class Contact: NSObject, NSCoding {
+class Contact: NSManagedObject {
     
-    var contactId : String = NSUUID().UUIDString
-    
-    var firstName: String
-    var lastName: String
-    var email: String
-    var phoneNumber: String
-    var gender: Gender?
-    var birthDate: NSDate
-    var address: String?
-    
-    init(firstName: String, lastName: String, email: String, phoneNumber: String, gender: Gender?, birthDate: NSDate, address: String?){
-        
-        self.firstName = firstName
-        self.lastName = lastName
-        self.email = email
-        self.phoneNumber = phoneNumber
-        self.gender = gender
-        self.birthDate = birthDate
-        self.address = address
-        
-        super.init()
-    }
-    
-    //encode properties
-    func encodeWithCoder(aCoder: NSCoder) {
-        
-        aCoder.encodeObject(self.firstName, forKey: "FIRSTNAME")
-        aCoder.encodeObject(self.lastName, forKey:"LASTNAME")
-        aCoder.encodeObject(self.email, forKey: "EMAIL")
-        aCoder.encodeObject(self.phoneNumber, forKey: "PHONENUMBER")
-        aCoder.encodeObject(self.gender?.rawValue, forKey: "GENDER")
-        aCoder.encodeObject(self.birthDate, forKey: "BIRTHDATE")
-        aCoder.encodeObject(self.address, forKey: "ADDRESS")
+    //Save contacts
+    class func saveContactsInDatabase(){
+        do {
+            try DataManager.sharedManager.managedObjectContext?.save()
+            
+            //check if it saved
+            let path: NSURL = {
+                let appDel = UIApplication.sharedApplication().delegate as? AppDelegate
+                
+                let docDir = appDel!.applicationDocumentsDirectory
+                
+                return docDir.URLByAppendingPathComponent("SingleViewCoreData.sqlite")
+            }()
+            
+            print("Persistent store path: \(path)")
+            
+        } catch let error {
+            print("Error saving to database: \(error)")
+        }
         
     }
     
-    //decode properties
-   required init?(coder aDecoder: NSCoder){
-    self.firstName = aDecoder.decodeObjectForKey("FIRSTNAME") as! String
-    self.lastName = aDecoder.decodeObjectForKey("LASTNAME") as! String
-    self.email = aDecoder.decodeObjectForKey("EMAIL") as! String
-    self.phoneNumber = aDecoder.decodeObjectForKey("PHONENUMBER") as! String
-    
-    if let genderValue = aDecoder.decodeObjectForKey("GENDER") as? Int {
-        self.gender =  Gender(rawValue: genderValue)
-     
+    //Delete contact
+    class func deleteContactFromDatabase(contactID: String){
+        let request = NSFetchRequest(entityName: "Contact")
+        request.predicate = NSPredicate(format: "id == %@", contactID)
+        
+        do {
+            if let contactToDelete = try DataManager.sharedManager.managedObjectContext?.executeFetchRequest(request).first as? Contact {
+                DataManager.sharedManager.managedObjectContext?.deleteObject(contactToDelete)
+                
+                //save deletion change
+                Contact.saveContactsInDatabase()
+                
+            }
+        } catch let error {
+            print("Unable to delete contact from database: \(error)")
+        }
     }
-  
-    self.birthDate = aDecoder.decodeObjectForKey("BIRTHDATE") as! NSDate
-    self.address = aDecoder.decodeObjectForKey("ADDRESS") as? String
     
-    super.init()
-    
+    //Load contacts
+    class func loadContactsFromDatabase() -> [Contact]? {
+        
+        let request = NSFetchRequest(entityName: "Contact")
+        request.sortDescriptors = [NSSortDescriptor(
+            key: "lastName",
+            ascending: true,
+            selector: #selector(NSString.localizedCaseInsensitiveCompare(_:))
+            )]
+        
+        do {
+            if let queryResults = try DataManager.sharedManager.managedObjectContext?.executeFetchRequest(request) as? [Contact] where !queryResults.isEmpty{
+                
+                DataManager.sharedManager.contacts = queryResults
+                
+                return queryResults
+                
+            }
+        }catch let error {
+            print("Error loading contacts from database: \(error)")
+        }
+        
+        return nil
     }
-    
     
 }
+

@@ -7,13 +7,12 @@
 //
 
 import UIKit
+import CoreData
 
 class ContactsTVC: UIViewController, UITableViewDelegate, UITableViewDataSource{
     
     //MARK: Properties
-    @IBOutlet var tableView: UITableView!
-    
-    var cell: UITableViewCell?
+    @IBOutlet weak var tableView: UITableView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,36 +20,34 @@ class ContactsTVC: UIViewController, UITableViewDelegate, UITableViewDataSource{
         tableView.delegate = self
         tableView.dataSource = self
         
-        loadContactList()
+        loadContactListFromDataManager()
         addObservers()
         
     }
     
-    func loadContactList(){
-        //list of contacts from documents directory
-        if let contactFile = DataManager.sharedManager.readContactsFromDirectory() {
-            
-            DataManager.sharedManager.contacts = contactFile
-            
+    private func loadContactListFromDataManager(){
+        //if there are contacts saved in CoreData already, then load those; otherwise fetchContacts from web
+        if Contact.loadContactsFromDatabase() != nil {
+            //load contacts from database
         } else {
-            //dummy list of contacts
-//            DataManager.sharedManager.getContacts()
-            
+            //get contacts from web and then save them in CoreData
             DataManager.sharedManager.fetchContacts()
+            
         }
+        
     }
     
-    func addObservers(){
-        DataManager.sharedManager.notificationCenter.addObserverForName("CONTACT_CHANGED", object: nil, queue: nil, usingBlock: { _ in self.tableView.reloadData() })
+    private func addObservers(){
+        DataManager.sharedManager.notificationCenter.addObserverForName("CONTACT_CHANGED", object: nil, queue: nil, usingBlock: { [weak self] _ in self?.tableView.reloadData() })
         
-        DataManager.sharedManager.notificationCenter.addObserverForName("CONTACT_DELETED", object: nil, queue: nil, usingBlock: { _ in self.tableView.reloadData() })
+        DataManager.sharedManager.notificationCenter.addObserverForName("CONTACT_DELETED", object: nil, queue: nil, usingBlock: { [weak self] _ in self?.tableView.reloadData() })
         
-        DataManager.sharedManager.notificationCenter.addObserverForName("CONTACT_ADDED", object: nil, queue: nil, usingBlock: { _ in self.tableView.reloadData() })
+        DataManager.sharedManager.notificationCenter.addObserverForName("CONTACT_ADDED", object: nil, queue: nil, usingBlock: { [weak self] _ in self?.tableView.reloadData() })
         
-        DataManager.sharedManager.notificationCenter.addObserverForName("GOT_WEB_CONTACTS", object: nil, queue: nil, usingBlock: { _ in self.tableView.reloadData() })
+        DataManager.sharedManager.notificationCenter.addObserverForName("GOT_WEB_CONTACTS", object: nil, queue: nil, usingBlock: { [weak self] _ in self?.tableView.reloadData() })
     }
     
-    //MARK: TableView Methods
+    //MARK: - TableView Methods
     
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
         
@@ -68,7 +65,9 @@ class ContactsTVC: UIViewController, UITableViewDelegate, UITableViewDataSource{
         
         let cell = self.tableView.dequeueReusableCellWithIdentifier("cell") as UITableViewCell!
         
-        cell?.textLabel!.text = "\(DataManager.sharedManager.contacts[indexPath.row].firstName)" + " " + "\(DataManager.sharedManager.contacts[indexPath.row].lastName)"
+        if let fName = DataManager.sharedManager.contacts[indexPath.row].firstName, let lName = DataManager.sharedManager.contacts[indexPath.row].lastName {
+            cell?.textLabel!.text = "\(fName)" + " " + "\(lName)"
+        }
         
         return cell!
         
@@ -88,6 +87,7 @@ class ContactsTVC: UIViewController, UITableViewDelegate, UITableViewDataSource{
             if let path = sender as? NSIndexPath {
                 
                 detailsVC!.selectedContact = DataManager.sharedManager.contacts[path.row]
+                
             }
         }
     }
@@ -98,6 +98,7 @@ class ContactsTVC: UIViewController, UITableViewDelegate, UITableViewDataSource{
         DataManager.sharedManager.notificationCenter.removeObserver(self, name: "CONTACT_CHANGED", object: nil)
         DataManager.sharedManager.notificationCenter.removeObserver(self, name: "CONTACT_DELETED", object: nil)
         DataManager.sharedManager.notificationCenter.removeObserver(self, name: "CONTACT_ADDED", object: nil)
+        DataManager.sharedManager.notificationCenter.removeObserver(self, name: "GOT_WEB_CONTACTS", object: nil)
     }
     
     
@@ -167,5 +168,20 @@ class ContactsTVC: UIViewController, UITableViewDelegate, UITableViewDataSource{
     //        }
     //    }
     
+//    private func loadContactListFromDataManager(){
+        //        //load list of contacts from documents directory
+        //        if let contactFile = DataManager.sharedManager.readContactsFromDirectory() {
+        //
+        //            DataManager.sharedManager.contacts = contactFile
+        //
+        //        } else {
+        //            //dummy list of contacts
+        ////            DataManager.sharedManager.getContacts()
+        //
+        //            DataManager.sharedManager.fetchContacts()
+        //        }
+    
+//        }
+
 }
 

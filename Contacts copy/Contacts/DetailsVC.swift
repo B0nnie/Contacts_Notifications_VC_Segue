@@ -11,10 +11,10 @@ import UIKit
 class DetailsVC: UIViewController{
     
     //MARK: Properties
-    @IBOutlet var txtFldFirstName: UITextField!
-    @IBOutlet var txtFldLastName: UITextField!
-    @IBOutlet var txtFldEmail: UITextField!
-    @IBOutlet var txtFldPhone: UITextField!
+    @IBOutlet weak var txtFldFirstName: UITextField!
+    @IBOutlet weak var txtFldLastName: UITextField!
+    @IBOutlet weak var txtFldEmail: UITextField!
+    @IBOutlet weak var txtFldPhone: UITextField!
     @IBOutlet weak var segCtrlGender: UISegmentedControl!
     @IBOutlet weak var birthDatePicker: UIDatePicker!
     @IBOutlet weak var txtFldAddress: UITextField!
@@ -31,23 +31,30 @@ class DetailsVC: UIViewController{
         
     }
     
-    func populateFields(){
+    private func populateFields(){
         
-        if let contact = selectedContact{
+        if let contact = selectedContact {
+            
             self.txtFldFirstName.text = contact.firstName
             self.txtFldLastName.text = contact.lastName
             self.txtFldEmail.text = contact.email
             self.txtFldPhone.text = contact.phoneNumber
-            
-            if let gender = contact.gender?.rawValue {
-            self.segCtrlGender.selectedSegmentIndex = gender
+            //                        if let gender = contact.gender?.rawValue {
+            //                        self.segCtrlGender.selectedSegmentIndex = gender
+            //                        }
+            if let gender = contact.gender {
+                self.segCtrlGender.selectedSegmentIndex = Int(gender)
+            } else {
+                self.segCtrlGender.selectedSegmentIndex = -1
             }
             
-            self.birthDatePicker.date = contact.birthDate
+            if let bday = contact.birthDate {
+                self.birthDatePicker.date = bday
+            }
             
             self.txtFldAddress.text = contact.address
         }
-       
+        
     }
     
     @IBAction func saveContactChanges() {
@@ -55,7 +62,10 @@ class DetailsVC: UIViewController{
         self.selectedContact?.lastName = self.txtFldLastName.text!
         self.selectedContact?.email = self.txtFldEmail.text!
         self.selectedContact?.phoneNumber = self.txtFldPhone.text!
-        self.selectedContact?.gender = Gender(rawValue: self.segCtrlGender.selectedSegmentIndex)
+        //        self.selectedContact?.gender = Gender(rawValue: self.segCtrlGender.selectedSegmentIndex)
+        
+        self.selectedContact?.gender = self.segCtrlGender.selectedSegmentIndex
+        
         self.selectedContact?.birthDate = self.birthDatePicker.date
         self.selectedContact?.address = self.txtFldAddress.text!
         
@@ -65,13 +75,14 @@ class DetailsVC: UIViewController{
     }
     
     @IBAction func deleteContact(){
-        if let contact = selectedContact {
+        
+        if let contact = selectedContact, let id = contact.id {
             
-            DataManager.sharedManager.deleteContact(contact.contactId)
+            DataManager.sharedManager.deleteContact(id)
             
             navigationController?.popViewControllerAnimated(true)
         }
         
     }
-   
+    
 }
